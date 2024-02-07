@@ -1,0 +1,84 @@
+
+// Program: King Vhura Advisor
+// Developer: Forex Robot Easy Team
+// Developer's Site: forexroboteasy.com
+
+// Include necessary libraries
+#include <Trade\Trade.mqh>
+#include <MovingAverages\MovingAverages.mqh>
+
+// Define constants
+#define SYMBOL 'USDJPY' // Trading symbol
+#define DEPOSIT 100 // Minimum deposit requirement
+#define LEVERAGE 200 // Leverage ratio
+
+// Define global variables
+double riskTolerance = 0.02; // Risk tolerance specified by the user
+double positionSize; // Position size for each trade
+CTrade trade; // Trade object
+CMovingAverages movingAverages; // Moving Averages object
+
+// Initialize the Expert Advisor
+int OnInit()
+{
+    // Set the leverage
+    trade.SetLeverage(LEVERAGE);
+
+    // Calculate the position size based on the account balance and risk tolerance
+    double accountBalance = AccountBalance();
+    positionSize = accountBalance * riskTolerance;
+
+    return(INIT_SUCCEEDED);
+}
+
+// Generate buy or sell signals based on Moving Average crossover
+void GenerateSignals()
+{
+    double maShort = movingAverages.iMA(SYMBOL, PERIOD_CURRENT, 20, 0, MODE_SMA, PRICE_CLOSE, 0);
+    double maLong = movingAverages.iMA(SYMBOL, PERIOD_CURRENT, 50, 0, MODE_SMA, PRICE_CLOSE, 0);
+
+    if(maShort > maLong)
+    {
+        // Generate buy signal
+        trade.Buy(Lots, SYMBOL);
+    }
+    else if(maShort < maLong)
+    {
+        // Generate sell signal
+        trade.Sell(Lots, SYMBOL);
+    }
+}
+
+// Execute trades based on the generated signals and position size
+void ExecuteTrades()
+{
+    // Check for open positions
+    if(trade.PositionsTotal() == 0)
+    {
+        // No open positions, generate signals and execute trades
+        GenerateSignals();
+    }
+}
+
+// Preserve initial deposit and adjust position size accordingly
+void PreserveDeposit()
+{
+    double accountBalance = AccountBalance();
+
+    // Adjust position size if profits are withdrawn
+    if(accountBalance > DEPOSIT)
+    {
+        double profit = accountBalance - DEPOSIT;
+        positionSize = (accountBalance - profit) * riskTolerance;
+    }
+}
+
+// The main trading function
+void OnTick()
+{
+    // Preserve initial deposit
+    PreserveDeposit();
+
+    // Execute trades
+    ExecuteTrades();
+}
